@@ -1,0 +1,221 @@
+---
+title: "p8105_hw3_yf2735"
+author: "Yujing FU"
+date: "2024-10-04"
+output: github_document
+---
+
+```{r setup, echo = FALSE}
+library(tidyverse)
+library(dplyr)
+library(janitor)
+library(ggplot2)
+```
+
+## Problem 1
+????????????????????????????????????????????????????????
+```{r}
+library(p8105.datasets)
+data("ny_noaa")
+```
+
+```{r}
+head(ny_noaa)
+```
+
+## Problem 2
+```{r}
+demo_df = 
+  read.csv("data/nhanes_covar.csv", skip = 4) |> 
+  janitor::clean_names() |> 
+  mutate(across(c(sex, age, bmi, education), as.numeric)) |> 
+  drop_na(sex, age, bmi, education) |> 
+  filter(age >= 21) |> 
+  mutate(
+    sex = factor(sex, levels = c("1", "2"), labels = c("Male", "Female")),
+    education = factor(education, levels = c("1", "2", "3"), labels = c("Less than high school", "High school equivalent", "More than high school"))
+  )
+view(demo_df)
+demo_df
+```
+
+```{r}
+accel_df = 
+  read.csv("data/nhanes_accel.csv") |> 
+  janitor::clean_names() |> 
+  drop_na()
+view(accel_df)
+accel_df
+```
+
+combine this two data sets
+```{r}
+merged_df = demo_df |>
+  full_join(accel_df, by = "seqn" )
+merged_df
+view(merged_df)
+```
+
+
+Produce a reader-friendly table for the number of men and women in each education category, and create a visualization of the age distributions for men and women in each education category. Comment on these items.
+```{r}
+merged_df_1 =
+  merged_df |> 
+  drop_na(education) |>  
+  group_by(education, sex)|> 
+  summarize(n_obs = n()) |> 
+  knitr::kable()
+merged_df_1
+```
+
+
+```{r}
+merged_df |> 
+  drop_na(education) |> 
+  ggplot(aes(x = age, fill = sex)) +  
+  geom_density(alpha = 0.5) +  
+  facet_wrap(~ education) + 
+  labs(title = "Age Distribution by Sex and Education Level",
+       x = "Age",
+       y = "Density",
+       fill = "Sex") + 
+  theme_minimal() 
+```
+Comment:
+For men and women with less than high school and more than high school education levels, the observed numbers are quite similar. However, at the high school equivalent level, there are more male observations.
+
+Regarding age distribution by sex and education level, there are more older women in the less than high school and high school equivalent categories. In the more than high school group, there are more younger men and women. For men with less than high school education, there are more observations around 45 and 70 years old, while men with high school equivalent education tend to be around 30 and 60 years old.
+
+
+Analyses of accelerometer data: Plot these total activities (y-axis) against age (x-axis); your plot should compare men to women and have separate panels for each education level. Include a trend line or a smooth to illustrate differences. Comment on your plot.
+```{r}
+merged_df |> 
+  drop_na(education) |> 
+  pivot_longer(cols= starts_with("min"),
+               names_prefix = "min",
+               names_to = "minute",
+               values_to = "mims") |> 
+  mutate(minute = as.numeric(minute)) |> 
+  ggplot(aes(x= age, y = mims, color=sex))+
+    geom_smooth(se = FALSE) +  
+    facet_wrap(~ education) +
+    labs(title = "24-Hour Activity Time Course by Education Level and Sex",
+         x = "Age",
+         y = "Activity (MIMS)") +
+    theme_minimal()
+
+```
+
+Interpretation:
+For people with education level less than high school, men around 60 years old tend to have higher accelerometer data while the female peaked at 15 around 30 years old. For high school equivalent education level, female aged more than 50 tend to have a lagged trend than man, and their accelerometer data peaked at 13 around 45 years old. As for people whose education level ar more than high school, their total activity are around 9 before age 57 and then female peaked at around 11 and male experienced a drop to around 6.
+
+
+## Problem 3
+```{r}
+jan2020_df = 
+  read_csv("data/citibike/Jan 2020 Citi.csv/Jan 2020 Citi.csv") |> 
+  janitor::clean_names() |> 
+  mutate(year = 2020, month = 1) 
+view(jan2020_df)
+
+jan2024_df = 
+  read_csv("data/citibike/Jan 2024 Citi.csv/Jan 2024 Citi.csv") |> 
+  janitor::clean_names() |> 
+  mutate(year = 2024, month = 1) 
+
+july2020_df = 
+  read_csv("data/citibike/July 2020 Citi.csv/July 2020 Citi.csv") |> 
+  janitor::clean_names() |> 
+  mutate(year = 2020, month = 7) 
+
+july2024_df = 
+  read_csv("data/citibike/July 2024 Citi.csv/July 2024 Citi.csv") |> 
+  janitor::clean_names() |> 
+  mutate(year = 2024, month = 7) 
+
+combined_df <- bind_rows(jan2020_df, jan2024_df, july2020_df, july2024_df)
+view(combined_df)
+```
+
+Produce a reader-friendly table showing the total number of rides in each combination of year and month separating casual riders and Citi Bike members. Comment on these results.
+```{r}
+combined_df |> 
+  group_by(year, month, member_casual) |> 
+  summarize(total_rides = n()) |> 
+  mutate(total_rides_month = sum(total_rides)) |> 
+  arrange(year, month) |> 
+  knitr::kable()
+```
+The table shows that the total number of rides tend to be larger for Citi Bike members than casual members. People also ride more in July than January. The total number of rides also increases from 2020 to 2024.
+
+
+Make a table showing the 5 most popular starting stations for July 2024; include the number of rides originating from these stations.
+```{r}
+july2024_df |> 
+  group_by(start_station_name) |>
+  summarize(n_rides = n()) |> 
+  mutate(popular_rank = min_rank(desc(n_rides))) |>  
+  filter(popular_rank <= 5) |> 
+  arrange(popular_rank)
+```
+
+??????????????????????????????????????????????????
+Make a plot to investigate the effects of day of the week, month, and year on median ride duration. This plot can include one or more panels, but should facilitate comparison across all variables of interest. Comment on your observations from this plot.
+```{r}
+median_duration_week =
+  combined_df |> 
+  group_by(weekdays) |> 
+  summarize(median_duration = median(duration, na.rm = TRUE))
+median_duration_week
+
+median_duration_month =
+  combined_df |> 
+  group_by(year, month) |> 
+  summarize(median_duration = median(duration, na.rm = TRUE))
+median_duration_month
+  
+median_duration_year = 
+  combined_df |> 
+  group_by(year) |> 
+  summarize(median_duration = median(duration, na.rm = TRUE))
+median_duration_year
+
+
+median_ride_duration =
+  combined_df |> 
+  group_by(year, month, weekdays) |> 
+  summarize(median_duration = median(duration), .groups = "drop")
+median_ride_duration
+
+ggplot(median_ride_duration, aes(x = weekdays, y = median_duration, color = factor(year))) +
+  geom_line(aes(group = interaction(year, month)), size = 1) +
+  facet_wrap(~ month) +  # Facet by month for comparison across the year
+  labs(title = "Median Ride Duration by Day of the Week, Month, and Year",
+       x = "Day of the Week",
+       y = "Median Ride Duration (minutes)",
+       color = "Year") +
+  theme_minimal()
+```
+
+
+There were relatively few electric Citi Bikes in 2020, but many more are available now. For data in 2024, make a figure that shows the impact of month, membership status, and bike type on the distribution of ride duration. Comment on your results.
+
+```{r}
+data_2024 =
+  combined_df |> 
+  filter(year == 2024) 
+
+
+ggplot(data_2024, aes(x = duration, fill = rideable_type)) +
+  geom_density(alpha = 0.5) + 
+  facet_wrap(~ month + member_casual) + 
+  labs(title = "Distribution of Ride Duration by Month, Membership Status, and Bike Type (2024)",
+       x = "Ride Duration (minutes)",
+       y = "Density",
+       fill = "Bike Type") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+```
+Comment:
+Most rides are concentrated in the 0 to 30 minutes. For electric bikes, there is a preference for short trips among users. Members tend to have longer ride durations compared to casual riders, with a higher frequency of electric bike usage. In July, it shows more longer rides.
+
