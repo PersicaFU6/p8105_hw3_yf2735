@@ -122,7 +122,7 @@ demo_df =
     education = factor(education, levels = c("1", "2", "3"), labels = c("Less than high school", "High school equivalent", "More than high school"))
   )
 
-demo_df
+head(demo_df)
 ```
 
 ```{r}
@@ -131,14 +131,14 @@ accel_df =
   janitor::clean_names() |> 
   drop_na()
 
-accel_df
+head(accel_df)
 ```
 
 combine this two data sets
 ```{r}
 merged_df = demo_df |>
   full_join(accel_df, by = "seqn" )
-merged_df
+head(merged_df)
 
 ```
 
@@ -151,7 +151,7 @@ merged_df_1 =
   group_by(education, sex)|> 
   summarize(n_obs = n()) |> 
   knitr::kable()
-merged_df_1
+head(merged_df_1)
 ```
 
 
@@ -219,6 +219,7 @@ july2024_df =
   mutate(year = 2024, month = 7) 
 
 combined_df <- bind_rows(jan2020_df, jan2024_df, july2020_df, july2024_df)
+head(combined_df)
 ```
 
 Produce a reader-friendly table showing the total number of rides in each combination of year and month separating casual riders and Citi Bike members. Comment on these results.
