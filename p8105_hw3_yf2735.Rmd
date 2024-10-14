@@ -13,7 +13,7 @@ library(ggplot2)
 ```
 
 ## Problem 1
-????????????????????????????????????????????????????????
+
 ```{r}
 library(p8105.datasets)
 data("ny_noaa")
@@ -22,6 +22,42 @@ data("ny_noaa")
 ```{r}
 head(ny_noaa)
 ```
+
+```{r}
+ny_noaa_clean =
+  ny_noaa |> 
+  mutate(across(c(prcp, snow, snwd, tmax, tmin), as.numeric)) |> 
+  separate(date, into = c("year", "month", "day"), sep = "-") |> 
+  mutate(across(c(year, month, day), as.numeric))
+head(ny_noaa_clean)
+```
+The dataset shows the weather in New York City. The dimension of the dataset is `r dim(ny_noaa_cleaned)` for rows and columns. It includes key variables such as weather station ID `id`, date of observation (`year`, `month`, `day`), and precipitation (tenths of mm) `prcp` (e.g. `r ny_noaa_cleaned$prcp[33]`). Also included are the snowing conditions: snowfall `snow` and snow depth `snwd`, and the highest and lowest temperature during the day (`tmax` and `tmin`). There are many missing values for the variables `snwd`, `tmax`, and `tmin`.
+
+
+
+Make a two-panel plot showing the average max temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
+???????????????????????????????????????????
+```{r}
+ny_noaa_clean_avgtmax =
+  ny_noaa_clean |> 
+  filter(month == 1 | month == 7) |> 
+  drop_na(tmax, tmin) |> 
+  group_by(id, year, month) |>
+  summarise(tmax_avg = mean(tmax, na.rm = TRUE), tmin_avg = mean(tmin, na.rm = TRUE)) 
+ny_noaa_clean_avgtmax
+
+
+
+ggplot(ny_noaa_clean_avgtmax, aes(x = as.factor(year), y = tmax_avg, color = id)) +
+  geom_line() +
+  facet_wrap(~month) +
+  labs(title = "Average Max Temperature in January and July", x = "Month", y = "Average Max Temperature") +
+  theme_minimal()
+```
+
+
+Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
+????????????????????????????????????????????????????????????????????
 
 ## Problem 2
 ```{r}
