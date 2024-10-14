@@ -10,6 +10,7 @@ library(tidyverse)
 library(dplyr)
 library(janitor)
 library(ggplot2)
+library(patchwork)
 ```
 
 ## Problem 1
@@ -28,15 +29,20 @@ ny_noaa_clean =
   ny_noaa |> 
   mutate(across(c(prcp, snow, snwd, tmax, tmin), as.numeric)) |> 
   separate(date, into = c("year", "month", "day"), sep = "-") |> 
-  mutate(across(c(year, month, day), as.numeric))
+  mutate(across(c(year, month, day), as.numeric)) |> 
+  mutate(tmax = tmax/10, #°C
+         tmin = tmin/10,
+         prcp = prcp/10) #mm
 head(ny_noaa_clean)
 ```
-The dataset shows the weather in New York City. The dimension of the dataset is `r dim(ny_noaa_cleaned)` for rows and columns. It includes key variables such as weather station ID `id`, date of observation (`year`, `month`, `day`), and precipitation (tenths of mm) `prcp` (e.g. `r ny_noaa_cleaned$prcp[33]`). Also included are the snowing conditions: snowfall `snow` and snow depth `snwd`, and the highest and lowest temperature during the day (`tmax` and `tmin`). There are many missing values for the variables `snwd`, `tmax`, and `tmin`.
+
+
+The dataset shows the weather in New York City. The dimension of the dataset is `r dim(ny_noaa_clean)` for rows and columns. It includes key variables such as weather station ID `id`, date of observation (`year`, `month`, `day`), and precipitation (tenths of mm) `prcp` (e.g. `r ny_noaa_clean$prcp[33]`). Also included are the snowing conditions: snowfall `snow` and snow depth `snwd`, and the highest and lowest temperature during the day (`tmax` and `tmin`). There are many missing values for the variables `snwd`, `tmax`, and `tmin`.
+
 
 
 
 Make a two-panel plot showing the average max temperature in January and in July in each station across years. Is there any observable / interpretable structure? Any outliers?
-???????????????????????????????????????????
 ```{r}
 ny_noaa_clean_avgtmax =
   ny_noaa_clean |> 
@@ -47,17 +53,61 @@ ny_noaa_clean_avgtmax =
 ny_noaa_clean_avgtmax
 
 
-
-ggplot(ny_noaa_clean_avgtmax, aes(x = as.factor(year), y = tmax_avg, color = id)) +
-  geom_line() +
-  facet_wrap(~month) +
-  labs(title = "Average Max Temperature in January and July", x = "Month", y = "Average Max Temperature") +
-  theme_minimal()
+ggplot(ny_noaa_clean_avgtmax, aes(x = year, y = tmax_avg, color = id)) +
+  geom_line(alpha = 0.5) +
+  facet_wrap(~month, ncol=1) +
+  labs(title = "Average Max Temperature in January and July", x = "Year", y = "Average Max Temperature(°C)") +
+  theme(legend.position = "none")
 ```
+The average maximum temperature in each weather station in New York have quite similar trend. We can see that the average maximum temperature in January is around -10°C to 10°C and in July is variating around 25°C to 30°C. There are some outliers, for example in the July of 1988 the average maximum temperature is pretty low which is around 15°C.
 
 
-Make a two-panel plot showing (i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option); and (ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
-????????????????????????????????????????????????????????????????????
+Make a two-panel plot showing 
+(i) tmax vs tmin for the full dataset (note that a scatterplot may not be the best option)
+```{r}
+tmax_boxplot =
+  ggplot(ny_noaa_clean, aes(x = factor(month), y = tmax, fill = factor(month))) +
+  geom_boxplot() +
+  labs(title = "Max Temperature by Month", x = "Month", y = "Temperature (°C)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+tmin_boxplot =
+  ggplot(ny_noaa_clean, aes(x = factor(month), y = tmin, fill = factor(month))) +
+  geom_boxplot() +
+  labs(title = "Min Temperature by Month", x = "Month", y = "Temperature (°C)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+
+(tmax_boxplot / tmin_boxplot) +
+  plot_annotation(title = "Max and Min Temperature by Month") +
+  plot_layout(ncol = 1, nrow = 2)  
+```
+We can see that the trend of maximum and minimu temperature are quite similar in along the year and there are not a very big lap of temperature between two graph in each month.
+
+
+(ii) make a plot showing the distribution of snowfall values greater than 0 and less than 100 separately by year.
+```{r}
+snow_filtered =
+  ny_noaa_clean |> 
+  filter(snow > 0 & snow < 100) |> 
+  drop_na(snow) |> 
+  ggplot(aes(x = factor(year), y = snow, fill = factor(year))) +
+  geom_violin(alpha = 0.6) +
+  labs(
+    title = "Distribution of Snowfall by Year (0-100 mm)",
+    x = "Year",
+    y = "Snowfall (mm)"
+  ) +
+  theme(legend.position = "bottom")
+snow_filtered
+
+```
+The distribution of snowfall across the years appears to be quite consistent, with a prevalent occurrence of snowfalls below 25mm. Additionally, snowfalls around 50mm and 75mm are also commonly observed.
+
+
+
 
 ## Problem 2
 ```{r}
@@ -71,7 +121,7 @@ demo_df =
     sex = factor(sex, levels = c("1", "2"), labels = c("Male", "Female")),
     education = factor(education, levels = c("1", "2", "3"), labels = c("Less than high school", "High school equivalent", "More than high school"))
   )
-view(demo_df)
+
 demo_df
 ```
 
@@ -80,7 +130,7 @@ accel_df =
   read.csv("data/nhanes_accel.csv") |> 
   janitor::clean_names() |> 
   drop_na()
-view(accel_df)
+
 accel_df
 ```
 
@@ -89,7 +139,7 @@ combine this two data sets
 merged_df = demo_df |>
   full_join(accel_df, by = "seqn" )
 merged_df
-view(merged_df)
+
 ```
 
 
@@ -152,7 +202,6 @@ jan2020_df =
   read_csv("data/citibike/Jan 2020 Citi.csv/Jan 2020 Citi.csv") |> 
   janitor::clean_names() |> 
   mutate(year = 2020, month = 1) 
-view(jan2020_df)
 
 jan2024_df = 
   read_csv("data/citibike/Jan 2024 Citi.csv/Jan 2024 Citi.csv") |> 
@@ -170,7 +219,6 @@ july2024_df =
   mutate(year = 2024, month = 7) 
 
 combined_df <- bind_rows(jan2020_df, jan2024_df, july2020_df, july2024_df)
-view(combined_df)
 ```
 
 Produce a reader-friendly table showing the total number of rides in each combination of year and month separating casual riders and Citi Bike members. Comment on these results.
@@ -187,15 +235,19 @@ The table shows that the total number of rides tend to be larger for Citi Bike m
 
 Make a table showing the 5 most popular starting stations for July 2024; include the number of rides originating from these stations.
 ```{r}
-july2024_df |> 
+five_popular_stations =
+  combined_df |> 
+  filter(year == 2024, month == 7) |> 
   group_by(start_station_name) |>
   summarize(n_rides = n()) |> 
-  mutate(popular_rank = min_rank(desc(n_rides))) |>  
-  filter(popular_rank <= 5) |> 
-  arrange(popular_rank)
-```
+  arrange(desc(n_rides)) |>
+  top_n(5)
 
-??????????????????????????????????????????????????
+print(five_popular_stations)
+  
+```
+The 5 most popular starting stations for July 2024 is Pier 61 at Chelsea Piers with 163	rides, University Pl & E 14 St with 155	rides, W 21 St & 6 Ave with 152	rides, West St & Chambers St with 150	rides and W 31 St & 7 Ave with 146	rides.
+
 Make a plot to investigate the effects of day of the week, month, and year on median ride duration. This plot can include one or more panels, but should facilitate comparison across all variables of interest. Comment on your observations from this plot.
 ```{r}
 median_duration_week =
